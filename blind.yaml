@@ -1,0 +1,76 @@
+esphome:
+  name: my_blind
+  platform: ESP8266
+  board: d1_mini
+
+wifi:
+  ssid: "Your Wifi SSID"
+  password: "Your Wifi Password"
+
+logger:
+
+ota:
+  password: "OTA Password"
+
+web_server:
+  port: 80
+
+api:
+  services:
+    - service: control_blind
+      variables:
+        target: int
+      then:
+        - stepper.set_target:
+            id: my_stepper
+            target: !lambda 'return target;'
+        - sensor.template.publish:
+            id: position
+            state: !lambda 'return target;'
+
+cover:
+  - platform: template
+    name: "My Blind"
+    id: my_blind
+    device_class: blind
+    open_action:
+      - stepper.set_target:
+          id: my_stepper
+          target: 6000
+      - sensor.template.publish:
+          id: position
+          state: !lambda return id(my_stepper).target_position;
+    close_action:
+      - stepper.set_target:
+          id: my_stepper
+          target: 0
+      - sensor.template.publish:
+            id: position
+            state: !lambda return id(my_stepper).target_position;
+    stop_action:
+      - stepper.set_target:
+          id: my_stepper
+          target: !lambda return id(my_stepper).current_position;
+      - sensor.template.publish:
+            id: position
+            state: !lambda return id(my_stepper).current_position;
+    optimistic: true
+    assumed_state: true
+
+sensor:
+  - platform: template
+    name: "My Blind Position"
+    id: position
+
+stepper:
+  - platform: a4988
+    id: my_stepper
+    step_pin: D6
+    dir_pin: D5
+    sleep_pin: D7
+    max_speed: 700
+
+    # Optional:
+    acceleration: inf
+    deceleration: inf
+
